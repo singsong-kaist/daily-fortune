@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { getRandomFortune } from "./fortunes";
 import { supabase, type FortuneDraw } from "@/lib/supabase";
 
-export default function FortuneCard() {
+export default function FortuneCard({ onDrawn }: { onDrawn?: () => void }) {
   const [flipped, setFlipped] = useState(false);
   const [result, setResult] = useState<ReturnType<typeof getRandomFortune> | null>(null);
   const [history, setHistory] = useState<FortuneDraw[]>([]);
@@ -38,6 +38,7 @@ export default function FortuneCard() {
       lucky_number: draw.luckyNumber,
     });
     loadHistory();
+    onDrawn?.();
   }
 
   return (
