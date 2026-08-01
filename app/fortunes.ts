@@ -34,9 +34,13 @@ export const luckyItems = [
   "향수",
 ];
 
-export function getRandomFortune() {
-  const fortune = fortunes[Math.floor(Math.random() * fortunes.length)];
+export function getRandomLuckyExtras() {
   const luckyItem = luckyItems[Math.floor(Math.random() * luckyItems.length)];
   const luckyNumber = Math.floor(Math.random() * 45) + 1;
-  return { fortune, luckyItem, luckyNumber };
+  return { luckyItem, luckyNumber };
+}
+
+export function getRandomFortune() {
+  const fortune = fortunes[Math.floor(Math.random() * fortunes.length)];
+  return { fortune, ...getRandomLuckyExtras() };
 }

@@ -1,14 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getRandomFortune } from "./fortunes";
+import { fortunes, getRandomLuckyExtras } from "./fortunes";
 import { supabase, type FortuneDraw } from "@/lib/supabase";
 import { useAuth } from "./AuthProvider";
+
+type FortuneResult = { fortune: string; luckyItem: string; luckyNumber: number };
+
+async function generateAiFortune(): Promise<string> {
+  const res = await fetch("/api/fortune", { method: "POST" });
+  if (!res.ok) throw new Error("AI fortune request failed");
+  const data = await res.json();
+  if (!data.fortune) throw new Error("Empty AI fortune");
+  return data.fortune as string;
+}
 
 export default function FortuneCard({ onDrawn }: { onDrawn?: () => void }) {
   const { user } = useAuth();
   const [flipped, setFlipped] = useState(false);
-  const [result, setResult] = useState<ReturnType<typeof getRandomFortune> | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<FortuneResult | null>(null);
   const [history, setHistory] = useState<FortuneDraw[]>([]);
 
   useEffect(() => {
@@ -32,9 +43,18 @@ export default function FortuneCard({ onDrawn }: { onDrawn?: () => void }) {
       setResult(null);
       return;
     }
-    const draw = getRandomFortune();
+
+    setLoading(true);
+    let fortune: string;
+    try {
+      fortune = await generateAiFortune();
+    } catch {
+      fortune = fortunes[Math.floor(Math.random() * fortunes.length)];
+    }
+    const draw: FortuneResult = { fortune, ...getRandomLuckyExtras() };
     setResult(draw);
     setFlipped(true);
+    setLoading(false);
 
     await supabase.from("fortune_draws").insert({
       fortune: draw.fortune,
@@ -83,9 +103,10 @@ export default function FortuneCard({ onDrawn }: { onDrawn?: () => void }) {
 
       <button
         onClick={handleDraw}
-        className="rounded-full bg-black px-8 py-3 text-base font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+        disabled={loading}
+        className="rounded-full bg-black px-8 py-3 text-base font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
       >
-        {flipped ? "다시 뽑기" : "오늘의 운세 보기"}
+        {loading ? "AI가 운세를 만드는 중..." : flipped ? "다시 뽑기" : "오늘의 운세 보기"}
       </button>
 
       {user ? (
