@@ -1,20 +1,43 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getRandomFortune } from "./fortunes";
+import { supabase, type FortuneDraw } from "@/lib/supabase";
 
 export default function FortuneCard() {
   const [flipped, setFlipped] = useState(false);
   const [result, setResult] = useState<ReturnType<typeof getRandomFortune> | null>(null);
+  const [history, setHistory] = useState<FortuneDraw[]>([]);
 
-  function handleDraw() {
+  useEffect(() => {
+    loadHistory();
+  }, []);
+
+  async function loadHistory() {
+    const { data, error } = await supabase
+      .from("fortune_draws")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(5);
+    if (!error && data) setHistory(data);
+  }
+
+  async function handleDraw() {
     if (flipped) {
       setFlipped(false);
       setResult(null);
       return;
     }
-    setResult(getRandomFortune());
+    const draw = getRandomFortune();
+    setResult(draw);
     setFlipped(true);
+
+    await supabase.from("fortune_draws").insert({
+      fortune: draw.fortune,
+      lucky_item: draw.luckyItem,
+      lucky_number: draw.luckyNumber,
+    });
+    loadHistory();
   }
 
   return (
@@ -58,6 +81,27 @@ export default function FortuneCard() {
       >
         {flipped ? "다시 뽑기" : "오늘의 운세 보기"}
       </button>
+
+      {history.length > 0 && (
+        <div className="w-full max-w-sm">
+          <h2 className="mb-2 text-sm font-semibold text-zinc-500 dark:text-zinc-400">
+            최근 뽑은 운세
+          </h2>
+          <ul className="flex flex-col gap-2">
+            {history.map((item) => (
+              <li
+                key={item.id}
+                className="rounded-lg bg-white p-3 text-sm text-zinc-700 shadow-sm dark:bg-zinc-900 dark:text-zinc-200"
+              >
+                <p>{item.fortune}</p>
+                <p className="mt-1 text-xs text-zinc-400">
+                  🍀 {item.lucky_item} · 🔢 {item.lucky_number}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
