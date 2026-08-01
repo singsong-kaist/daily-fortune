@@ -11,4 +11,5 @@ export type FortuneDraw = {
   fortune: string;
   lucky_item: string;
   lucky_number: number;
+  user_id: string | null;
 };

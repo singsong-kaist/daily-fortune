@@ -3,20 +3,24 @@
 import { useEffect, useState } from "react";
 import { getRandomFortune } from "./fortunes";
 import { supabase, type FortuneDraw } from "@/lib/supabase";
+import { useAuth } from "./AuthProvider";
 
 export default function FortuneCard({ onDrawn }: { onDrawn?: () => void }) {
+  const { user } = useAuth();
   const [flipped, setFlipped] = useState(false);
   const [result, setResult] = useState<ReturnType<typeof getRandomFortune> | null>(null);
   const [history, setHistory] = useState<FortuneDraw[]>([]);
 
   useEffect(() => {
-    loadHistory();
-  }, []);
+    if (user) loadHistory(user.id);
+    else setHistory([]);
+  }, [user]);
 
-  async function loadHistory() {
+  async function loadHistory(userId: string) {
     const { data, error } = await supabase
       .from("fortune_draws")
       .select("*")
+      .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(5);
     if (!error && data) setHistory(data);
@@ -36,8 +40,9 @@ export default function FortuneCard({ onDrawn }: { onDrawn?: () => void }) {
       fortune: draw.fortune,
       lucky_item: draw.luckyItem,
       lucky_number: draw.luckyNumber,
+      user_id: user?.id ?? null,
     });
-    loadHistory();
+    if (user) loadHistory(user.id);
     onDrawn?.();
   }
 
@@ -83,25 +88,29 @@ export default function FortuneCard({ onDrawn }: { onDrawn?: () => void }) {
         {flipped ? "다시 뽑기" : "오늘의 운세 보기"}
       </button>
 
-      {history.length > 0 && (
-        <div className="w-full max-w-sm">
-          <h2 className="mb-2 text-sm font-semibold text-zinc-500 dark:text-zinc-400">
-            최근 뽑은 운세
-          </h2>
-          <ul className="flex flex-col gap-2">
-            {history.map((item) => (
-              <li
-                key={item.id}
-                className="rounded-lg bg-white p-3 text-sm text-zinc-700 shadow-sm dark:bg-zinc-900 dark:text-zinc-200"
-              >
-                <p>{item.fortune}</p>
-                <p className="mt-1 text-xs text-zinc-400">
-                  🍀 {item.lucky_item} · 🔢 {item.lucky_number}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </div>
+      {user ? (
+        history.length > 0 && (
+          <div className="w-full max-w-sm">
+            <h2 className="mb-2 text-sm font-semibold text-zinc-500 dark:text-zinc-400">
+              내가 뽑은 운세
+            </h2>
+            <ul className="flex flex-col gap-2">
+              {history.map((item) => (
+                <li
+                  key={item.id}
+                  className="rounded-lg bg-white p-3 text-sm text-zinc-700 shadow-sm dark:bg-zinc-900 dark:text-zinc-200"
+                >
+                  <p>{item.fortune}</p>
+                  <p className="mt-1 text-xs text-zinc-400">
+                    🍀 {item.lucky_item} · 🔢 {item.lucky_number}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      ) : (
+        <p className="text-sm text-zinc-400">로그인하면 내가 뽑은 운세 기록을 볼 수 있어요.</p>
       )}
     </div>
   );
